@@ -86,7 +86,7 @@ def make_comparison_animation(data, field="rho", cfg=ANIM_CFG, solvers=None, xli
         lines = {}
         for i, s in enumerate(solvers):
             stride = max(1, data["n"] // 19)
-            lines[s], = ax.plot(x, values[s][0], color=ANIM_COLORS[s], ls=ANIM_LINES[s], lw=1.65, marker=ANIM_MARKERS[s], ms=4.0, markevery=(i % stride, stride), mfc="none", label=data["runs"][s]["label"])
+            lines[s], = ax.plot(x, values[s][0], color=ANIM_COLORS[s], ls=ANIM_LINES[s], lw=1.65, marker=ANIM_MARKERS[s], ms=4.0, markevery=(i % stride, stride), mfc="none", label=("LLF (Rusanov)" if s == "LLF" else data["runs"][s]["label"]))
         ax.set(xlabel="$x$", ylabel=FIELD_LABELS[field], xlim=bounds, ylim=yrange, yscale=scale)
         ax.grid(alpha=0.22, which="both")
         ax.tick_params(direction="out")
@@ -105,15 +105,16 @@ def make_comparison_animation(data, field="rho", cfg=ANIM_CFG, solvers=None, xli
             notes = []
             for s in solvers:
                 info = data["runs"][s]
+                display_name = "LLF (Rusanov)" if s == "LLF" else s
                 if data["valid"][s][j]:
                     lines[s].set_ydata(values[s][j])
-                    status_lines[s].set_text(f"{s}: {'complete' if j == len(times) - 1 else 'active'}")
+                    status_lines[s].set_text(f"{display_name}: {'complete' if j == len(times) - 1 else 'active'}")
                 else:
                     lines[s].set_ydata(np.full_like(x, np.nan))
-                    status_lines[s].set_text(f"{s}: STOPPED at {info['t_reached']:.5g}")
+                    status_lines[s].set_text(f"{display_name}: STOPPED at {info['t_reached']:.5g}")
                     trial = info.get("fail_time", float("nan"))
                     pmin = info.get("fail_min_p", float("nan"))
-                    reason = f"{s}: last accepted t={info['t_reached']:.5g}; rejected trial t={trial:.5g}"
+                    reason = f"{display_name}: last accepted t={info['t_reached']:.5g}; rejected trial t={trial:.5g}"
                     if np.isfinite(pmin):
                         reason += f", min(p)={pmin:.3g}"
                     notes.append(reason)
@@ -150,7 +151,7 @@ def export_animation(data, field="rho", cfg=ANIM_CFG, solvers=None, xlim=None, y
     folder.mkdir(parents=True, exist_ok=True)
     path = folder / f"stage1_{data['key']}_{field}{name_suffix}.mp4"
     settings = {k: cfg[k] for k in ("fps", "dpi", "figsize", "hold_start", "hold_end")}
-    settings.update({"data_id": data["data_id"], "field": field, "solvers": solvers, "xlim": xlim, "ylim": ylim, "yscale": yscale, "render_version": 3 if data["key"] == "double_rarefaction" else 2})
+    settings.update({"data_id": data["data_id"], "field": field, "solvers": solvers, "xlim": xlim, "ylim": ylim, "yscale": yscale, "render_version": 4})
     digest = hashlib.sha256(json.dumps(settings, sort_keys=True).encode()).hexdigest()
     stamp = path.with_suffix(".json")
     if cfg["reuse_movies"] and path.exists() and stamp.exists():
@@ -242,7 +243,7 @@ def export_gallery(datasets, cfg=ANIM_CFG, embed=True):
     page = '''<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Stage 1 | 1D Euler scheme animations</title>
 <style>body{font-family:system-ui,-apple-system,sans-serif;max-width:1180px;margin:28px auto;padding:0 20px;color:#182432;background:#f5f7fa}h1{font-size:27px;margin-bottom:8px}p{line-height:1.7}.box{background:#fff;border:1px solid #d9e0e8;border-radius:12px;padding:20px;margin-top:18px}label{display:inline-flex;gap:10px;align-items:center;margin:5px 18px 5px 0}select,button{padding:8px;font-size:15px;border:1px solid #acb9c7;border-radius:5px;background:white}video{width:100%;height:auto;background:white;margin-top:10px}small{line-height:1.7;color:#465666}#failure{background:#fff4ec;padding:12px;border-left:4px solid #b75b19;white-space:pre-line}a{color:#006ba2}.badge{font-size:13px;letter-spacing:1px;color:#38637f}.key{font-family:monospace}</style>
 <div class="badge">COMPUTATIONAL FLUID DYNAMICS · STAGE 1</div><h1>1次元Euler方程式：スキームの時間発展比較</h1>
-<p>LF・LW・Roe・LLF / Rusanov・HLL（HLLE）・HLLCを、同じ物理時刻と同じ軸範囲で比較します。保存済み動画なので再生にPythonやインターネット接続は不要です。</p>
+<p>LF・LW・Roe・LLF (Rusanov)・HLL（HLLE）・HLLCを、同じ物理時刻と同じ軸範囲で比較します。保存済み動画なので再生にPythonやインターネット接続は不要です。</p>
 <div class="box"><label>問題<select id="case"></select></label><label>表示量<select id="field"></select></label><label>再生速度<select id="speed"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></label><label><input id="loop" type="checkbox" checked>繰り返す</label>
 <h2 id="title"></h2><p id="note"></p><video id="video" controls loop playsinline preload="metadata"></video><p><span id="meta"></span>　<a id="download" download>このMP4を保存</a></p><p id="failure" hidden></p></div>
 <div class="box"><h2>比較時の注意</h2><p>黒線は厳密リーマン解などの保存変数を同じ格子でセル平均した参照値です。Shu–OsherのみHLLC＋MUSCL/SSP-RK2の高解像度数値参照解です。LF・Roe・LLF・HLL・HLLCは1次精度の構成、LWはRichtmyerの2段階・2次精度法です。</p><p>動画の出力時刻は共通ですが、各方式のCFL時間刻みは変更していません。フレーム時刻を挟む二つの受理済み保存状態を表示用に線形補間しています。補間状態で計算を再開することはありません。補間は衝撃波面をわずかに平滑化し得るため、定量評価には元の数値解を用いてください。停止後の状態を外挿・再利用して現在時刻の曲線として描くことはありません。</p><small>動画の最初と最後には静止時間があります。物理時刻は図の上部に表示されます。各問題の物理的な終了時刻は異なります。動画の長さを揃えているので、異なる問題間の再生速度は同一の物理時間尺度ではありません。</small></div>
