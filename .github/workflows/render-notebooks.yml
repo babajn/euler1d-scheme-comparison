@@ -88,14 +88,15 @@ jobs:
       - name: Check and commit outputs
         run: |
           python - <<'PY'
-          import nbformat
+          import json
           from pathlib import Path
           paths = sorted(Path("notebooks").glob("0[1-5]_*.ipynb"))
           assert len(paths) == 5, [str(p) for p in paths]
           for p in paths:
-              nb = nbformat.read(p, as_version=4)
-              code = [c for c in nb.cells if c.cell_type == "code"]
-              assert code and all(c.execution_count is not None for c in code)
+              with p.open(encoding="utf-8") as stream:
+                  nb = json.load(stream)
+              code = [c for c in nb["cells"] if c["cell_type"] == "code"]
+              assert code and all(c.get("execution_count") is not None for c in code)
               assert any("image/png" in o.get("data", {}) for c in code for o in c.get("outputs", []))
               print(p, p.stat().st_size)
           PY
