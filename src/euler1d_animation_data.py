@@ -2,6 +2,48 @@
 # Numerical algorithm is unchanged from the notebook.
 from euler1d_core import ALL_SOLVERS, PROBLEMS, simulate, exact_cell_average, cons_to_prim
 
+from pathlib import Path
+import numpy as np
+ANIM_CFG = {
+    "problems": ("entropy", "contact_static", "contact", "sod", "double_rarefaction", "shu_osher", "lax"),
+    "n_basic": 200,
+    "n_shu_osher": 400,
+    "gamma": 1.4,
+    "cfl": 0.4,
+    "wave_speeds": "einfeldt",
+    "roe_entropy": 0.1,
+    "n_frames": 181,
+    "fps": 20,
+    "hold_start": 10,
+    "hold_end": 30,
+    "dpi": 100,
+    "figsize": (12.8, 7.2),
+    "n_reference": (1600, 3200),
+    "reference_limiter": "mc",
+    "fields_by_problem": {
+        "entropy": ("rho",),
+        "contact_static": ("rho",),
+        "contact": ("rho",),
+        "sod": ("rho", "u", "p"),
+        "double_rarefaction": ("rho", "u", "p", "e"),
+        "shu_osher": ("rho",),
+        "lax": ("rho", "u", "p"),
+    },
+    "output_dir": "stage1_animation_outputs",
+    "reuse_data": True,
+    "reuse_movies": True,
+    "save_mp4": True,
+    "verify_observer": True,
+}
+
+BASE_DIR = Path.cwd()
+if (BASE_DIR / "data" / "sod.npz").exists() and (BASE_DIR / "animations").is_dir():
+    ANIM_CFG["output_dir"] = str(BASE_DIR)
+else:
+    ANIM_CFG["output_dir"] = str(BASE_DIR / "stage1_animation_outputs")
+print("Output:", ANIM_CFG["output_dir"])
+print("Problems:", ANIM_CFG["problems"])
+
 """Record common-time frames without changing a solver's integration steps."""
 from pathlib import Path
 import hashlib
