@@ -59,7 +59,7 @@ clone済みの作業ディレクトリでは、ローカルの変更を保存し
 
 ## 動画・追加実験・出力
 
-全5冊で`run_movies=True`が標準です。JavaScriptアニメーションで表示し、ffmpegは不要です。配布Notebookの出力は空で、実行すると図・表・動画が生成されます。
+全5冊で`run_movies=True`が標準です。**標準設定で実行した図・表・動画の出力を各Notebookに保存しています。** 静止図・表はGitHub上でも確認できます。JavaScriptアニメーションはGitHubのプレビューでは再生されない場合があるため、JupyterでNotebookを開いてください。動画表示にffmpegは不要です。Notebookを再実行すると表示結果が更新されます。
 
 第I部は`movie_case`、第II〜V部は`movie_problem`で対象を選びます。設定セルの直前に全選択肢を記載しています。第IV・V部の`movie_fluxes`は動画を作る流束、`movie_field`は`rho`・`u`・`p`・`e`です。標準はHLLC・Sod・密度です。各流束に別の動画を作ります。
 
@@ -76,6 +76,10 @@ five_part_outputs/temporal/     # 第V部
 ```
 
 同じ冊を再実行すると、その保存先の結果が更新されます。時間参照解と通常の計算結果は設定・指標とともに保存します。
+
+## 出力付きNotebookの更新
+
+GitHubの **Actions → Render and save notebook outputs → Run workflow** から、5冊をそれぞれ独立したカーネルで標準設定により実行し、図・表・アニメーションの出力を保存できます。全5冊のセル実行と画像生成が成功した場合にのみ、`main`のNotebookをまとめて更新します。再実行にはGitHub Actionsの書き込み権限が必要です。
 
 ## 数値的な注意
 
