@@ -39,7 +39,6 @@ jobs:
       - name: Execute notebook and save cell outputs
         env:
           NOTEBOOK: ${{ matrix.notebook }}
-          MPLBACKEND: Agg
         run: |
           python - <<'PY'
           import os
@@ -49,8 +48,12 @@ jobs:
           name = os.environ["NOTEBOOK"]
           path = Path("notebooks") / f"{name}.ipynb"
           nb = nbformat.read(path, as_version=4)
+          first_code = next(cell for cell in nb.cells if cell.cell_type == "code")
+          original_source = first_code.source
+          first_code.source = 'get_ipython().run_line_magic("matplotlib", "inline")\\n' + original_source
           client = NotebookClient(nb, timeout=900, kernel_name="python3", resources={"metadata": {"path": str(Path.cwd())}}, allow_errors=False)
           client.execute()
+          first_code.source = original_source
           code_cells = [cell for cell in nb.cells if cell.cell_type == "code"]
           assert code_cells and all(cell.execution_count is not None for cell in code_cells)
           assert all(output.output_type != "error" for cell in code_cells for output in cell.get("outputs", []))
