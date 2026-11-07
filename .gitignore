@@ -6,5 +6,8 @@ stage1_animation_outputs/
 notebooks/stage1_animation_outputs/
 notebooks/outputs/
 outputs/
-three_part_outputs/
 *.tmp.mp4
+three_part_outputs/
+four_part_outputs/
+notebooks/four_part_outputs/
+.venv/

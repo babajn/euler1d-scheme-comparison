@@ -1,8 +1,4 @@
-"""Three-part teaching organization; evolution uses the unchanged euler1d_core.
-
-Plotting and diagnostics are retained from the original comparison notebook.
-The three parts classify teaching purposes, not mutually exclusive algorithms.
-"""
+"""Euler experiments, diagnostics, and animations for Parts II-IV."""
 import numpy as np
 from euler1d_core import ALL_SOLVERS, RIEMANN_SOLVERS, PROBLEMS, simulate, metrics, exact_pointwise, exact_cell_average, cons_to_prim, project_reference
 
@@ -145,9 +141,9 @@ def plot_pressure_minimum(results):
     plt.close(fig)
 
 PARTS = {
-    "classical": {"solvers": ("LF", "LW"), "order": 1, "title": "Part I: classical methods"},
-    "modern": {"solvers": RIEMANN_SOLVERS, "order": 1, "title": "Part II: practical fluxes, first-order baseline"},
-    "high_accuracy": {"solvers": RIEMANN_SOLVERS, "order": 2, "title": "Part III: MUSCL + SSP-RK2"},
+    "classical": {"solvers": ("LF", "LW"), "order": 1, "title": "Part II: classical Euler methods"},
+    "modern": {"solvers": RIEMANN_SOLVERS, "order": 1, "title": "Part III: practical fluxes, first-order baseline"},
+    "high_accuracy": {"solvers": RIEMANN_SOLVERS, "order": 2, "title": "Part IV: MUSCL + SSP-RK2"},
 }
 RUN_CACHE = {}
 
@@ -186,7 +182,7 @@ def run_convergence(part, cfg):
 
 
 def shu_reference(cfg):
-    """Two numerical references, retained from the original notebook, not exact."""
+    """Compare two numerical references; neither is an exact solution."""
     n1, n2 = cfg["n_reference"]
     if n2 <= n1 or n2 % n1 or n1 % cfg["n_shu_osher"]:
         raise ValueError("Use nested integer grids: comparison N -> reference N1 -> N2.")
@@ -272,12 +268,12 @@ class FrameRecorder:
 def make_part_animation(part, key, cfg, field="rho", n_frames=61):
     """Record existing integrators without dt clipping; return a single-axis movie.
 
-    Shu-Osher movies remain in the original animation notebook; this helper uses
-    exact reference solutions only. The final states match simulate without an observer.
+    This helper uses exact reference solutions only.
+    The final states match simulate without an observer.
     """
     from matplotlib.animation import FuncAnimation
     if key == "shu_osher":
-        raise ValueError("Use the original animation notebook for Shu-Osher numerical-reference movies.")
+        raise ValueError("Shu-Osher requires a numerical-reference movie and is not supported by this helper.")
     if n_frames < 2:
         raise ValueError("n_frames must be at least 2.")
     group, problem = PARTS[part], PROBLEMS[key]
