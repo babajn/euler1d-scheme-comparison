@@ -433,7 +433,7 @@ class RunResult:
 
     @property
     def label(self):
-        name = "HLL (HLLE)" if self.solver == "HLL" and self.wave_speeds == "einfeldt" else self.solver
+        name = "LLF (Rusanov)" if self.solver == "LLF" else ("HLL (HLLE)" if self.solver == "HLL" and self.wave_speeds == "einfeldt" else self.solver)
         if self.solver == "LW":
             return "LW (Richtmyer)"
         if self.order == 2:
