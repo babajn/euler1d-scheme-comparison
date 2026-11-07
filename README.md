@@ -48,3 +48,5 @@ Notebook実行時に生成される `stage1_animation_outputs/animations/*.mp4` 
 このリポジトリのNotebookは、以前ChatGPT内で作成した計算教材を、配布・取得しやすいよう**画像・動画の埋め込み結果だけ除いた**軽量版です。計算コード・日本語解説・動画生成セルを収録しています。
 
 著作権者による明示的なライセンス指定はまだありません。
+
+表示ラベルは **LLF (Rusanov)**（Stage 2では **LLF (Rusanov) + MUSCL**）です。数値計算で用いる方式の識別子は従来どおり `LLF` です。
