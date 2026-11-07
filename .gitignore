@@ -1,0 +1,9 @@
+__pycache__/
+.ipynb_checkpoints/
+*.py[cod]
+.DS_Store
+stage1_animation_outputs/
+notebooks/stage1_animation_outputs/
+notebooks/outputs/
+outputs/
+*.tmp.mp4
