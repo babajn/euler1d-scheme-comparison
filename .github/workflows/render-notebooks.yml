@@ -50,7 +50,7 @@ jobs:
           nb = nbformat.read(path, as_version=4)
           first_code = next(cell for cell in nb.cells if cell.cell_type == "code")
           original_source = first_code.source
-          first_code.source = 'get_ipython().run_line_magic("matplotlib", "inline")\\n' + original_source
+          first_code.source = 'get_ipython().run_line_magic("matplotlib", "inline")\n' + original_source
           client = NotebookClient(nb, timeout=900, kernel_name="python3", resources={"metadata": {"path": str(Path.cwd())}}, allow_errors=False)
           client.execute()
           first_code.source = original_source
