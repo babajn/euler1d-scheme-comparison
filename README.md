@@ -32,7 +32,7 @@ GitHubの「Code → Download ZIP」でも取得できます。既にclone済み
 - `run_movies`：JavaScriptによる時間発展の比較。ffmpegは不要です。第I部は `movie_case`、第II～IV部は `movie_problem` で問題を選びます。
 - `run_extras`：CFL依存性などの追加実験。第II～IV部の `run_shu_osher` は高解像度参照解を使うShu–Osher実験です。
 
-動画・追加実験・Shu–Osherは標準では無効です。配布Notebookの出力は空で、実行後に図・表・動画が表示されます。結果は次の場所に保存します。
+動画は標準で有効です（`run_movies=True`）。追加実験・Shu–Osherは標準では無効です。配布Notebookの出力は空で、実行後に図・表・動画が表示されます。結果は次の場所に保存します。
 
 ```text
 four_part_outputs/
