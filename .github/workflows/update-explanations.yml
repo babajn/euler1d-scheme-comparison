@@ -27,7 +27,7 @@ jobs:
         run: python -m pip install nbformat
       - name: Apply explanations and preserve all numerical outputs
         run: python scripts/expand_beginner_explanations.py
-      - name: Normalize chapter headings
+      - name: Normalize Parts II and III chapter and section numbering
         run: python scripts/fix_duplicate_part_headings.py
       - name: Validate notebooks and preservation report
         run: |
@@ -54,7 +54,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add notebooks/01_advection_burgers.ipynb notebooks/02_euler_classical.ipynb notebooks/03_euler_riemann_solvers.ipynb notebooks/04_spatial_reconstruction.ipynb notebooks/05_time_integration.ipynb validation/beginner_explanations.json
           if ! git diff --cached --quiet; then
-            git commit -m "Explain foundational finite-volume concepts throughout the five notebooks"
+            git commit -m "Standardize Parts II and III Markdown heading hierarchy"
             git push origin HEAD:main
           fi
       - name: Package teaching material
