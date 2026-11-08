@@ -1,0 +1,27 @@
+[
+  {
+    "notebook": "01_advection_burgers.ipynb",
+    "cells": 55,
+    "code_cells": 15
+  },
+  {
+    "notebook": "02_euler_classical.ipynb",
+    "cells": 48,
+    "code_cells": 15
+  },
+  {
+    "notebook": "03_euler_riemann_solvers.ipynb",
+    "cells": 51,
+    "code_cells": 15
+  },
+  {
+    "notebook": "04_spatial_reconstruction.ipynb",
+    "cells": 41,
+    "code_cells": 12
+  },
+  {
+    "notebook": "05_time_integration.ipynb",
+    "cells": 46,
+    "code_cells": 15
+  }
+]

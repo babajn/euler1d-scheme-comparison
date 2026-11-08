@@ -97,7 +97,8 @@ def sod_zoom(runs):
         ax.plot(xp, core.exact_pointwise(p, xp, p.final_time, runs[0].gamma)[:, 0], color="black", label="Exact (pointwise)")
         for j, r in enumerate(runs):
             if r.status == "ok":
-                ax.plot(r.x, r.U[:, 0], color=COLORS[j], ls=STYLES[j], marker=("o", "s", "^", "D")[j], ms=3, mfc="none", label=r.label)
+                mask = (r.x >= bounds[0]) & (r.x <= bounds[1])
+                ax.plot(r.x[mask], r.U[mask, 0], color=COLORS[j], ls=STYLES[j], marker=("o", "s", "^", "D")[j], ms=3, mfc="none", label=r.label)
         ax.set(xlim=bounds, xlabel="$x$", ylabel="Density", title=f"Sod: {title}, N={runs[0].n}")
         ax.legend(); fig.tight_layout(); plt.show(); plt.close(fig)
 

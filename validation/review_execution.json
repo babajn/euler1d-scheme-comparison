@@ -1,0 +1,42 @@
+[
+  {
+    "notebook": "01_advection_burgers.ipynb",
+    "code_cells": 15,
+    "errors": 0,
+    "png_outputs": 15,
+    "animations": 1,
+    "seconds": 13.036252446000006
+  },
+  {
+    "notebook": "02_euler_classical.ipynb",
+    "code_cells": 15,
+    "errors": 0,
+    "png_outputs": 10,
+    "animations": 1,
+    "seconds": 30.164343262000003
+  },
+  {
+    "notebook": "03_euler_riemann_solvers.ipynb",
+    "code_cells": 15,
+    "errors": 0,
+    "png_outputs": 13,
+    "animations": 1,
+    "seconds": 49.68814461600002
+  },
+  {
+    "notebook": "04_spatial_reconstruction.ipynb",
+    "code_cells": 12,
+    "errors": 0,
+    "png_outputs": 37,
+    "animations": 1,
+    "seconds": 108.71905484300001
+  },
+  {
+    "notebook": "05_time_integration.ipynb",
+    "code_cells": 15,
+    "errors": 0,
+    "png_outputs": 37,
+    "animations": 1,
+    "seconds": 119.41388856399999
+  }
+]

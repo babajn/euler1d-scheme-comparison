@@ -1,5 +1,4 @@
-# Standalone module extracted from notebooks/euler1d_stage1_light.ipynb
-# Numerical algorithm is unchanged from the notebook.
+"""Finite-volume Euler fluxes, states, exact references and conservative updates."""
 from dataclasses import dataclass, replace
 from functools import lru_cache
 from typing import Optional, Tuple
@@ -8,7 +7,7 @@ import numpy as np
 
 class NumericalFailure(RuntimeError):
     """An inadmissible trial state; the integrator retains the last accepted state."""
-    def __init__(self, stage, U=None, gamma=1.4, detail=""):
+    def __init__(self, stage, U=None, gamma=1.4, detail="", primitive=None):
         self.stage = stage
         self.min_rho = np.nan
         self.min_p = np.nan
@@ -20,6 +19,13 @@ class NumericalFailure(RuntimeError):
             self.min_rho = float(np.min(rho))
             self.min_p = float(np.min(pressure))
             bad = (~np.all(np.isfinite(U), axis=-1)) | (~np.isfinite(pressure)) | (rho <= 0.0) | (pressure <= 0.0)
+            indices = np.flatnonzero(bad)
+            self.bad_index = int(indices[0]) if len(indices) else None
+        if primitive is not None:
+            W = np.asarray(primitive)
+            self.min_rho = float(np.min(W[..., 0]))
+            self.min_p = float(np.min(W[..., 2]))
+            bad = (~np.all(np.isfinite(W), axis=-1)) | (W[..., 0] <= 0) | (W[..., 2] <= 0)
             indices = np.flatnonzero(bad)
             self.bad_index = int(indices[0]) if len(indices) else None
         message = f"{stage}: {detail} min(rho)={self.min_rho:.5e}, min(p)={self.min_p:.5e}"
@@ -381,7 +387,7 @@ def interface_states(U: np.ndarray, problem: Problem, gamma: float, order: int, 
     WL, WR = Wg[1:-2] + 0.5 * slopes[1:-2], Wg[2:-1] - 0.5 * slopes[2:-1]
     for state in (WL, WR):
         if not np.all(np.isfinite(state)) or np.any(state[:, 0] <= 0.0) or np.any(state[:, 2] <= 0.0):
-            raise NumericalFailure("MUSCL reconstruction", detail="A reconstructed rho or p is not positive.")
+            raise NumericalFailure("MUSCL reconstruction", detail="A reconstructed face rho or p is not positive.", primitive=state)
     return prim_to_cons(WL, gamma), prim_to_cons(WR, gamma)
 
 

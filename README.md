@@ -68,9 +68,9 @@ Shu–Osherの簡易動画には対応していません。`run_shu_osher=True`�
 CSV・NPZ・JSONの保存先：
 
 ```text
-four_part_outputs/scalar/       # 第I部
-four_part_outputs/classical/    # 第II部
-four_part_outputs/modern/       # 第III部
+five_part_outputs/scalar/       # 第I部
+five_part_outputs/classical/    # 第II部
+five_part_outputs/modern/       # 第III部
 five_part_outputs/spatial/      # 第IV部
 five_part_outputs/temporal/     # 第V部
 ```
@@ -99,3 +99,10 @@ python scripts/check_numerics.py
 スカラー11・Euler9・半離散法8グループの検証を行います。Notebookの実行条件と検証範囲は[validation/README.md](validation/README.md)に記載しています。
 
 著作権者による明示的なライセンス指定はまだありません。
+
+
+## 学習のための検証演習
+
+非保存形Burgersの波面速度、Roeのエントロピー補正、MUSCLの時間収束、全変動・値の範囲・波面幅を標準実行します。第V部のMUSCL時間参照は5,120・10,240ステップです。詳細な導出は折りたたみ補足に置き、各冊の本文は独立して読める構成です。
+
+追加の比較関数は `src/review_experiments.py` にあります。すべての出力は `five_part_outputs/` の各部のフォルダーへ保存します。
