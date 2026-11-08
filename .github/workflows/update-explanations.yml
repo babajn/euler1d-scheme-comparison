@@ -1,73 +1,34 @@
-name: Update introductory explanations
+name: Validate notebook teaching text
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - .github/workflows/update-explanations.yml
 
 permissions:
-  contents: write
-
-concurrency:
-  group: notebook-markdown-${{ github.ref }}
-  cancel-in-progress: false
+  contents: read
 
 jobs:
-  explain:
+  validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Install notebook format validator
-        run: python -m pip install nbformat
-      - name: Apply explanations and preserve all numerical outputs
-        run: python scripts/expand_beginner_explanations.py
-      - name: Normalize Parts II and III chapter and section numbering
-        run: python scripts/fix_duplicate_part_headings.py
-      - name: Validate notebooks and preservation report
+      - run: python -m pip install nbformat
+      - name: Validate current versioned notebooks
         run: |
           python - <<'PY'
           from pathlib import Path
-          import json
           import nbformat
-          report = json.loads(Path('validation/beginner_explanations.json').read_text())
-          assert len(report['notebooks']) == 5
-          for item in report['notebooks']:
-              path = Path('notebooks') / item['notebook']
+          paths = sorted(Path('notebooks').glob('0[1-5]_*.ipynb'))
+          assert len(paths) == 5
+          for path in paths:
               nb = nbformat.read(path, as_version=4)
               nbformat.validate(nb)
-              assert item['non_markdown_sha256_before'] == item['non_markdown_sha256_after']
-              assert item['code_cells'] == item['executed_code_cells']
-              assert item['error_outputs'] == 0 and item['png_outputs'] > 0
-              print(path.name, len(nb.cells), 'cells; code and outputs unchanged')
-          print('Total code cells:', sum(item['code_cells'] for item in report['notebooks']))
-          print('Preserved PNG outputs:', sum(item['png_outputs'] for item in report['notebooks']))
+              titles = [line for c in nb.cells if c.cell_type == 'markdown' for line in c.source.splitlines() if line.startswith('# ')]
+              assert len(titles) == 1, (path, titles)
+              code = [c for c in nb.cells if c.cell_type == 'code']
+              assert all(c.execution_count is not None for c in code)
+              assert not any(o.output_type == 'error' for c in code for o in c.outputs)
+              print(path.name, len(code), 'executed cells; unique title')
           PY
-      - name: Commit teaching text
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add notebooks/01_advection_burgers.ipynb notebooks/02_euler_classical.ipynb notebooks/03_euler_riemann_solvers.ipynb notebooks/04_spatial_reconstruction.ipynb notebooks/05_time_integration.ipynb validation/beginner_explanations.json
-          if ! git diff --cached --quiet; then
-            git commit -m "Standardize Parts II and III Markdown heading hierarchy"
-            git push origin HEAD:main
-          fi
-      - name: Package teaching material
-        uses: actions/upload-artifact@v4
-        with:
-          name: beginner-notebooks-with-outputs
-          path: |
-            notebooks/0[1-5]_*.ipynb
-            src/
-            docs/teaching/
-            scripts/expand_beginner_explanations.py
-            validation/beginner_explanations.json
-            README.md
-            requirements.txt
-          retention-days: 7
-          if-no-files-found: error
