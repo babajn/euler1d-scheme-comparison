@@ -1,0 +1,9 @@
+{
+  "notebook": "euler1d_stage1_light.ipynb",
+  "code_cells": 29,
+  "embedded_mp4_videos": 29,
+  "png_final_snapshots": 15,
+  "errors": 0,
+  "seconds": 249.35520061699998,
+  "settings": "Unmodified defaults. A: 7 problems/14 videos, B: 3 problems/3 videos, C: 3 problems x 4 solvers/12 videos. A Shu-Osher reference N=1600,3200 executed."
+}

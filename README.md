@@ -106,3 +106,16 @@ python scripts/check_numerics.py
 非保存形Burgersの波面速度、Roeのエントロピー補正、MUSCLの時間収束、全変動・値の範囲・波面幅を標準実行します。第V部のMUSCL時間参照は5,120・10,240ステップです。詳細な導出は折りたたみ補足に置き、各冊の本文は独立して読める構成です。
 
 追加の比較関数は `src/review_experiments.py` にあります。すべての出力は `five_part_outputs/` の各部のフォルダーへ保存します。
+
+
+## 6方式・MUSCL・1次と2次精度の動画比較
+
+[euler1d_stage1_light.ipynb](notebooks/euler1d_stage1_light.ipynb) は計算コードを内蔵した単独実行Notebookです。実行結果の動画と最終時刻の図を保存しています。
+
+- A：古典的LF・LWと、区分一定＋前進EulerのRoe・LLF (Rusanov)・HLL・HLLC。LWだけはRichtmyerの2次精度法です。
+- B：同じMUSCL・リミッター・SSP-RK2で、4種類の数値流束を比較します。
+- C：各数値流束について、区分一定＋前進EulerとMUSCL＋SSP-RK2を比較します。空間と時間を同時に変える総合比較です。
+
+Aは7問題・14本、B・Cは標準でエントロピー波・移動接触面・Sodの密度を使う15本です。`ORDER_CFG`で問題、流束、リミッター、物理量を選択できます。選択肢は設定セルの直前にあります。MP4の再生成にはffmpegを使い、未導入ならNotebook内のJavaScript動画へ切り替えます。
+
+`stage1_animation_outputs/stage1_orders_gallery.html`は動画を内蔵した一覧です。元の数値積分の時間刻みを変えず、表示用に受理済み状態を補間します。停止後の曲線は表示しません。

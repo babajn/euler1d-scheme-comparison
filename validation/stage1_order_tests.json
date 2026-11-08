@@ -1,0 +1,22 @@
+{
+  "tests": [
+    "primitive/conserved round trip",
+    "F*(U,U) = F(U), all six solvers",
+    "symmetric-speed HLL equals LLF",
+    "stationary contact: Roe, HLLC, and Richtmyer LW",
+    "periodic conservation, all six solvers",
+    "MUSCL/SSP-RK2 periodic conservation",
+    "Sod star pressure and velocity",
+    "exact-solution quadrature and positive reference states",
+    "nonperiodic boundary-flux budget",
+    "all eight problems with four MUSCL fluxes; observer unchanged",
+    "A/B grids and initial states match",
+    "failed frames stay NaN and are not extrapolated",
+    "B/C render both normal and failed runs",
+    "cached MUSCL data reused without simulation",
+    "limiter participates in cache signature",
+    "LF/LW rejected from MUSCL comparisons"
+  ],
+  "count": 16,
+  "scope": "Small n=24 problems, including Shu-Osher numerical references 48/96. All existing numerical-core tests included."
+}
