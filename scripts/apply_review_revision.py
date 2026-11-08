@@ -59,6 +59,7 @@ def cleanup(nb, part):
         s = s.replace('§2.2', '「TVDの確認演習」') if c.id.startswith('rev-') else s
         if part == 0:
             s = re.sub(r'(?<![A-Za-z_])C(?![A-Za-z_])', lambda m: r'C_{\mathrm{adv}}', s)
+            s = s.replace(r'\frac C_{\mathrm{adv}}2', r'\frac{C_{\mathrm{adv}}}{2}')
         if part in (1,2):
             s = s.replace('RoeとHLLCがほぼ重なること自体も、このテストでは重要な結果です。','')
             s = s.replace('を測定します。SSP-RK2の境界流束も段階の重み$1/2,1/2$で積算します。','を測定します。この部では、実際の1ステップ更新に使う境界流束から保存収支を求めます。')
@@ -66,11 +67,12 @@ def cleanup(nb, part):
             s = s.replace('表示名は `LLF (Rusanov)`、内部識別子は `LLF` です。','')
         if part == 2:
             s = s.replace('LWは滑らかな解で2次精度です。','')
-            s = s.replace('上のハットと、本文の$\widehat{\boldsymbol F}$は、ともに数値流束を表します。', 'ハットは、物理流束と区別するための記号です。')
+            s = s.replace(r'上のハットと、本文の$\widehat{\boldsymbol F}$は、ともに数値流束を表します。', 'ハットは、物理流束と区別するための記号です。')
         if part == 4:
             s = s.replace('その後にMUSCLでも調べます。','続く「MUSCLでも時間収束を測る」でMUSCLを調べます。')
-            s = s.replace('E_t(', 'E_{\mathrm{time}}(')
-            s = s.replace(r'\rho_{\Delta t,i}',r'\bar\rho_{\Delta t,i}').replace(r'\rho_{{\rm ref},i}',r'\bar\rho_{{\rm ref},i}')
+            s = s.replace('E_t(', r'E_{\mathrm{time}}(')
+            s = re.sub(r'(?<!\\bar)\\rho_{\\Delta t,i}', lambda m: r'\bar\rho_{\Delta t,i}', s)
+            s = re.sub(r'(?<!\\bar)\\rho_{{\\rm ref},i}', lambda m: r'\bar\rho_{{\rm ref},i}', s)
         s = s.replace('### 基礎説明の参考資料','**基礎説明の参考資料**')
         c.source = s
     key = f'rev-symbols-{part}'
