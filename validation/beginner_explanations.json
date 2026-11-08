@@ -3,8 +3,8 @@
   "notebooks": [
     {
       "notebook": "01_advection_burgers.ipynb",
-      "inserted_markdown_cells": 7,
-      "appended_markdown_cells": 1,
+      "inserted_markdown_cells": 0,
+      "appended_markdown_cells": 0,
       "code_cells": 14,
       "executed_code_cells": 14,
       "png_outputs": 13,
@@ -15,8 +15,8 @@
     },
     {
       "notebook": "02_euler_classical.ipynb",
-      "inserted_markdown_cells": 5,
-      "appended_markdown_cells": 2,
+      "inserted_markdown_cells": 0,
+      "appended_markdown_cells": 0,
       "code_cells": 14,
       "executed_code_cells": 14,
       "png_outputs": 10,
@@ -27,8 +27,8 @@
     },
     {
       "notebook": "03_euler_riemann_solvers.ipynb",
-      "inserted_markdown_cells": 5,
-      "appended_markdown_cells": 4,
+      "inserted_markdown_cells": 0,
+      "appended_markdown_cells": 0,
       "code_cells": 13,
       "executed_code_cells": 13,
       "png_outputs": 10,
@@ -39,8 +39,8 @@
     },
     {
       "notebook": "04_spatial_reconstruction.ipynb",
-      "inserted_markdown_cells": 5,
-      "appended_markdown_cells": 4,
+      "inserted_markdown_cells": 0,
+      "appended_markdown_cells": 0,
       "code_cells": 12,
       "executed_code_cells": 12,
       "png_outputs": 37,
@@ -51,8 +51,8 @@
     },
     {
       "notebook": "05_time_integration.ipynb",
-      "inserted_markdown_cells": 5,
-      "appended_markdown_cells": 4,
+      "inserted_markdown_cells": 0,
+      "appended_markdown_cells": 0,
       "code_cells": 12,
       "executed_code_cells": 12,
       "png_outputs": 34,
