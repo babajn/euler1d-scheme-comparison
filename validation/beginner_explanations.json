@@ -1,0 +1,65 @@
+{
+  "scope": "Markdown only; no numerical rerun",
+  "notebooks": [
+    {
+      "notebook": "01_advection_burgers.ipynb",
+      "inserted_markdown_cells": 7,
+      "appended_markdown_cells": 1,
+      "code_cells": 14,
+      "executed_code_cells": 14,
+      "png_outputs": 13,
+      "error_outputs": 0,
+      "non_markdown_sha256_before": "a7045cc11b1a8f2b97be79e8a4154bd32be65665f9cf6194788fad96384e14c9",
+      "non_markdown_sha256_after": "a7045cc11b1a8f2b97be79e8a4154bd32be65665f9cf6194788fad96384e14c9",
+      "code_and_outputs_preserved": true
+    },
+    {
+      "notebook": "02_euler_classical.ipynb",
+      "inserted_markdown_cells": 5,
+      "appended_markdown_cells": 2,
+      "code_cells": 14,
+      "executed_code_cells": 14,
+      "png_outputs": 10,
+      "error_outputs": 0,
+      "non_markdown_sha256_before": "d8e10cc5a0a75d349be81f624517ca67553559768d20622cec8ade355fd0f0ac",
+      "non_markdown_sha256_after": "d8e10cc5a0a75d349be81f624517ca67553559768d20622cec8ade355fd0f0ac",
+      "code_and_outputs_preserved": true
+    },
+    {
+      "notebook": "03_euler_riemann_solvers.ipynb",
+      "inserted_markdown_cells": 5,
+      "appended_markdown_cells": 4,
+      "code_cells": 13,
+      "executed_code_cells": 13,
+      "png_outputs": 10,
+      "error_outputs": 0,
+      "non_markdown_sha256_before": "731156c5774c3f52526e11752b0c0d832f59882e4768856b943d1437298e00e5",
+      "non_markdown_sha256_after": "731156c5774c3f52526e11752b0c0d832f59882e4768856b943d1437298e00e5",
+      "code_and_outputs_preserved": true
+    },
+    {
+      "notebook": "04_spatial_reconstruction.ipynb",
+      "inserted_markdown_cells": 5,
+      "appended_markdown_cells": 4,
+      "code_cells": 12,
+      "executed_code_cells": 12,
+      "png_outputs": 37,
+      "error_outputs": 0,
+      "non_markdown_sha256_before": "cc41fdbc8753006a9a877fadc95c7f5ca6f4229caf8ee13dc7ad0de8bd2b1d53",
+      "non_markdown_sha256_after": "cc41fdbc8753006a9a877fadc95c7f5ca6f4229caf8ee13dc7ad0de8bd2b1d53",
+      "code_and_outputs_preserved": true
+    },
+    {
+      "notebook": "05_time_integration.ipynb",
+      "inserted_markdown_cells": 5,
+      "appended_markdown_cells": 4,
+      "code_cells": 12,
+      "executed_code_cells": 12,
+      "png_outputs": 34,
+      "error_outputs": 0,
+      "non_markdown_sha256_before": "2e478ce65ea50afa4f7c031d745e66eb5caa8a44c8f12f93ea93abcdf5313962",
+      "non_markdown_sha256_after": "2e478ce65ea50afa4f7c031d745e66eb5caa8a44c8f12f93ea93abcdf5313962",
+      "code_and_outputs_preserved": true
+    }
+  ]
+}
