@@ -2,32 +2,18 @@ name: Render and save notebook outputs
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - .github/workflows/render-notebooks.yml
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
-  group: render-notebooks-${{ github.ref }}
+  group: notebook-publishing-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  execute:
-    name: Execute ${{ matrix.notebook }}
+  render:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        notebook:
-          - 01_advection_burgers
-          - 02_euler_classical
-          - 03_euler_riemann_solvers
-          - 04_spatial_reconstruction
-          - 05_time_integration
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -36,82 +22,29 @@ jobs:
           cache: pip
       - name: Install dependencies
         run: python -m pip install -r requirements.txt nbclient nbformat ipykernel
-      - name: Prepare TVD teaching sections
-        run: python scripts/add_tvd_sections.py
-      - name: Execute notebook and save cell outputs
-        env:
-          NOTEBOOK: ${{ matrix.notebook }}
+      - name: Execute versioned notebooks in fresh kernels
+        run: python scripts/execute_review_notebooks.py
+      - name: Validate outputs and numerical checks
+        run: python scripts/validate_review_notebooks.py
+      - name: Commit executed notebooks
         run: |
-          python - <<'PY'
-          import os
-          from pathlib import Path
-          import nbformat
-          from nbclient import NotebookClient
-          name = os.environ["NOTEBOOK"]
-          path = Path("notebooks") / f"{name}.ipynb"
-          nb = nbformat.read(path, as_version=4)
-          first_code = next(cell for cell in nb.cells if cell.cell_type == "code")
-          original_source = first_code.source
-          first_code.source = 'get_ipython().run_line_magic("matplotlib", "inline")\n' + original_source
-          client = NotebookClient(nb, timeout=900, kernel_name="python3", resources={"metadata": {"path": str(Path.cwd())}}, allow_errors=False)
-          client.execute()
-          first_code.source = original_source
-          code_cells = [cell for cell in nb.cells if cell.cell_type == "code"]
-          assert code_cells and all(cell.execution_count is not None for cell in code_cells)
-          assert all(output.output_type != "error" for cell in code_cells for output in cell.get("outputs", []))
-          figures = sum("image/png" in output.get("data", {}) for cell in code_cells for output in cell.get("outputs", []))
-          assert figures > 0, f"No figures generated in {name}"
-          if name.startswith(("01_", "04_", "05_")):
-              added = [c for c in code_cells if c.id.startswith("tvd-")]
-              assert len(added) == 1 and any("image/png" in o.get("data", {}) for o in added[0].outputs)
-          nbformat.validate(nb)
-          nbformat.write(nb, path)
-          print(f"{name}: {len(code_cells)} code cells; {figures} PNG figures; {path.stat().st_size} bytes")
-          PY
-      - name: Upload executed notebook
-        uses: actions/upload-artifact@v4
-        with:
-          name: executed-${{ matrix.notebook }}
-          path: notebooks/${{ matrix.notebook }}.ipynb
-          retention-days: 3
-          if-no-files-found: error
-
-  publish:
-    name: Commit executed notebooks
-    needs: execute
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: true
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: executed-*
-          path: notebooks
-          merge-multiple: true
-      - name: Use explicit derivative notation in Markdown
-        run: python scripts/normalize_derivative_notation.py
-      - name: Check and commit outputs
-        run: |
-          python - <<'PY'
-          import json
-          from pathlib import Path
-          paths = sorted(Path("notebooks").glob("0[1-5]_*.ipynb"))
-          assert len(paths) == 5, [str(p) for p in paths]
-          for p in paths:
-              with p.open(encoding="utf-8") as stream:
-                  nb = json.load(stream)
-              code = [c for c in nb["cells"] if c["cell_type"] == "code"]
-              assert code and all(c.get("execution_count") is not None for c in code)
-              assert any("image/png" in o.get("data", {}) for c in code for o in c.get("outputs", []))
-              print(p, p.stat().st_size)
-          PY
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add notebooks/01_advection_burgers.ipynb notebooks/02_euler_classical.ipynb notebooks/03_euler_riemann_solvers.ipynb notebooks/04_spatial_reconstruction.ipynb notebooks/05_time_integration.ipynb
+          git add notebooks/0[1-5]_*.ipynb validation/review_execution.json validation/review_v3_validation.json
           if ! git diff --cached --quiet; then
-            git commit -m "Include executed figures, tables and animations in notebooks"
+            git commit -m "Refresh checked notebook figures tables and animations"
             git push origin HEAD:main
           fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: notebooks-with-outputs
+          path: |
+            notebooks/0[1-5]_*.ipynb
+            src/
+            scripts/
+            docs/
+            validation/
+            README.md
+            requirements.txt
+          retention-days: 7
+          if-no-files-found: error
