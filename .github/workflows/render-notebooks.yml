@@ -85,6 +85,8 @@ jobs:
           pattern: executed-*
           path: notebooks
           merge-multiple: true
+      - name: Use explicit derivative notation in Markdown
+        run: python scripts/normalize_derivative_notation.py
       - name: Check and commit outputs
         run: |
           python - <<'PY'
