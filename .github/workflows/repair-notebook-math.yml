@@ -1,0 +1,39 @@
+name: Repair and validate notebook mathematics
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/repair-notebook-math.yml
+
+permissions:
+  contents: write
+
+jobs:
+  math:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Correct malformed Markdown-only TeX
+        run: python scripts/fix_notebook_math.py
+      - name: Install MathJax for syntax validation
+        run: npm install --no-save --no-audit --no-fund --ignore-scripts mathjax-full@3.2.1
+      - name: Validate every notebook formula
+        run: node scripts/check_notebook_math.js
+      - name: Publish repaired notebooks preserving computation outputs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add notebooks/01_advection_burgers.ipynb notebooks/02_euler_classical.ipynb notebooks/03_euler_riemann_solvers.ipynb notebooks/04_spatial_reconstruction.ipynb notebooks/05_time_integration.ipynb
+          if ! git diff --cached --quiet; then
+            git commit -m "Fix broken Markdown TeX without changing notebook outputs"
+            git push origin HEAD:main
+          fi
