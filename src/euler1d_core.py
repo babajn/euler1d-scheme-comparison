@@ -36,7 +36,7 @@ def prim_to_cons(W: np.ndarray, gamma: float = 1.4) -> np.ndarray:
     """基本変数 W=(rho,u,p) を保存変数 U=(rho,rho*u,E) に変換する。"""
     W = np.asarray(W, dtype=float)
     rho, u, p = W[..., 0], W[..., 1], W[..., 2]
-    if gamma <= 1.0 or np.any(rho <= 0.0) or np.any(p <= 0.0) or not np.all(np.isfinite(W)):
+    if not np.isfinite(gamma) or gamma <= 1.0 or np.any(rho <= 0.0) or np.any(p <= 0.0) or not np.all(np.isfinite(W)):
         raise ValueError("gamma > 1, finite rho/u/p, rho > 0 and p > 0 are required.")
     return np.stack((rho, rho * u, p / (gamma - 1.0) + 0.5 * rho * u**2), axis=-1)
 
@@ -194,6 +194,8 @@ PROBLEMS = {
 def grid_for(problem: Problem, n: int):
     if not isinstance(n, (int, np.integer)) or n < 8:
         raise ValueError("n must be an integer >= 8.")
+    if not np.isfinite(problem.bounds).all() or problem.bounds[1] <= problem.bounds[0]:
+        raise ValueError("Problem bounds must be finite and increasing.")
     edges = np.linspace(problem.bounds[0], problem.bounds[1], n + 1)
     return edges, 0.5 * (edges[:-1] + edges[1:]), float(edges[1] - edges[0])
 
@@ -201,12 +203,13 @@ def grid_for(problem: Problem, n: int):
 def advected_cell_average(problem: Problem, edges: np.ndarray, t: float, gamma: float):
     """正弦波/矩形波の厳密なセル平均。密度だけでなく保存変数を平均する。"""
     dx, x = np.diff(edges), 0.5 * (edges[:-1] + edges[1:])
+    origin = problem.bounds[0]
     v, length = problem.velocity, problem.bounds[1] - problem.bounds[0]
     if problem.key == "entropy":
-        rho = 1.0 + 0.2 * np.sinc(dx / length) * np.sin(2.0 * np.pi * (x - v * t) / length)
+        rho = 1.0 + 0.2 * np.sinc(dx / length) * np.sin(2.0 * np.pi * (x - origin - v * t) / length)
     else:
         shift = (v * t) % length
-        a, b = 0.25 + shift, 0.45 + shift
+        a, b = origin + 0.25 * length + shift, origin + 0.45 * length + shift
         overlap = np.zeros_like(x)
         for k in (-1, 0, 1):
             overlap += np.maximum(0.0, np.minimum(edges[1:], b + k * length) - np.maximum(edges[:-1], a + k * length))
@@ -324,7 +327,8 @@ def exact_pointwise(problem: Problem, x: np.ndarray, t: float, gamma: float = 1.
     if problem.key == "shu_osher":
         raise ValueError("No exact solution is supplied for Shu-Osher.")
     if problem.key in ("entropy", "contact", "contact_static"):
-        coordinate = (x - problem.velocity * t) % 1.0
+        origin, end = problem.bounds
+        coordinate = ((x - origin - problem.velocity * t) / (end - origin)) % 1.0
         rho = 1.0 + 0.2 * np.sin(2.0 * np.pi * coordinate) if problem.key == "entropy" else 1.0 + ((coordinate >= 0.25) & (coordinate < 0.45))
         return np.stack((rho, np.full_like(x, problem.velocity), np.ones_like(x)), axis=-1)
     return riemann_primitive(x, t, problem, gamma)
@@ -456,11 +460,13 @@ def simulate(problem: Problem, solver: str, n: int = 200, gamma: float = 1.4,
         raise ValueError("Invalid solver or order.")
     if order == 2 and solver not in RIEMANN_SOLVERS:
         raise ValueError("MUSCL+SSP-RK2 is used only with Roe, LLF, HLL, and HLLC.")
-    if not (0.0 < cfl <= 0.9) or gamma <= 1.0 or roe_entropy < 0.0 or history_stride < 1:
-        raise ValueError("Require 0 < CFL <= 0.9, gamma > 1, entropy parameter >= 0 and history_stride >= 1.")
+    if not np.isfinite([cfl, gamma, roe_entropy]).all() or not (0.0 < cfl <= 0.9) or gamma <= 1.0 or roe_entropy < 0.0:
+        raise ValueError("Require finite 0 < CFL <= 0.9, gamma > 1 and entropy parameter >= 0.")
+    if any(isinstance(k, bool) or not isinstance(k, (int, np.integer)) or k < 1 for k in (history_stride, max_steps)):
+        raise ValueError("history_stride and max_steps must be positive integers.")
     target = problem.final_time if t_end is None else float(t_end)
-    if target < 0.0:
-        raise ValueError("t_end must be nonnegative.")
+    if not np.isfinite(target) or target < 0.0:
+        raise ValueError("t_end must be finite and nonnegative.")
     edges, x, dx = grid_for(problem, n)
     U0 = initial_cell_average(problem, edges, gamma)
     U = U0.copy()
@@ -525,7 +531,7 @@ def project_reference(reference: RunResult, edges: np.ndarray) -> np.ndarray:
 def metrics(result: RunResult, reference: Optional[RunResult] = None) -> dict:
     W = cons_to_prim(result.U, result.gamma)
     row = {"problem": result.problem.key, "solver": result.solver, "order": 2 if result.solver == "LW" else result.order,
-           "n": result.n, "cfl": result.cfl, "limiter": result.limiter if result.order == 2 else "constant",
+           "n": result.n, "gamma": result.gamma, "cfl": result.cfl, "limiter": result.limiter if result.order == 2 else "constant",
            "wave_speeds": result.wave_speeds, "roe_entropy": result.roe_entropy,
            "status": result.status, "t_reached": result.t, "t_target": result.target_time, "steps": result.steps,
            "seconds": result.elapsed, "rho_min": float(W[:, 0].min()), "p_min": float(W[:, 2].min()),
@@ -549,7 +555,8 @@ def metrics(result: RunResult, reference: Optional[RunResult] = None) -> dict:
         error = np.mean(np.abs(W - Wexact), axis=0)
         row.update(dict(zip(("L1_rho", "L1_u", "L1_p"), error)))
     if result.problem.key == "entropy":
-        phase = np.exp(-2j * np.pi * result.x)
+        origin, end = result.problem.bounds
+        phase = np.exp(-2j * np.pi * (result.x - origin) / (end - origin))
         coefficient = np.sum((W[:, 0] - W[:, 0].mean()) * phase)
         exact_coefficient = np.sum((Wexact[:, 0] - Wexact[:, 0].mean()) * phase)
         ratio = coefficient / exact_coefficient

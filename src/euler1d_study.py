@@ -1,6 +1,7 @@
 """Euler experiments, diagnostics, and animations for Parts II-IV."""
 import numpy as np
 from euler1d_core import ALL_SOLVERS, RIEMANN_SOLVERS, PROBLEMS, simulate, metrics, exact_pointwise, exact_cell_average, cons_to_prim, project_reference
+from euler1d_results import ExperimentCache, run_metadata, json_value
 
 import csv
 import html
@@ -145,7 +146,7 @@ PARTS = {
     "modern": {"solvers": RIEMANN_SOLVERS, "order": 1, "title": "Part III: practical fluxes, first-order baseline"},
     "high_accuracy": {"solvers": RIEMANN_SOLVERS, "order": 2, "title": "Part IV: MUSCL + SSP-RK2"},
 }
-RUN_CACHE = {}
+RUN_CACHE = ExperimentCache()
 
 
 def get_run(key, solver, cfg, n=None, order=1, **overrides):
@@ -156,6 +157,7 @@ def get_run(key, solver, cfg, n=None, order=1, **overrides):
     cache_key = (problem, solver, tuple(sorted(parameters.items())))
     if cache_key not in RUN_CACHE:
         RUN_CACHE[cache_key] = simulate(problem, solver, **parameters)
+    RUN_CACHE.record(cfg, cache_key)
     return RUN_CACHE[cache_key]
 
 
@@ -198,25 +200,31 @@ def shu_reference(cfg):
 
 def export_results(directory, cfg, reference=None):
     """Export raw solver IDs separately from display names and teaching parts."""
+    runs = RUN_CACHE.runs_for(cfg)
+    if not runs:
+        raise ValueError("No runs recorded for these experiment settings. Run the experiment before exporting.")
     directory = Path(directory)
-    directory.mkdir(parents=True, exist_ok=True)
-    rows, arrays = [], {}
-    for i, run in enumerate(RUN_CACHE.values()):
+    rows, arrays, metadata = [], {}, []
+    for i, run in enumerate(runs):
         ref = reference if run.problem.key == "shu_osher" and reference is not None and reference.n > run.n and reference.n % run.n == 0 else None
-        row = dict(metrics(run, ref), method=run.label)
+        row = dict(metrics(run, ref), run_id=i, method=run.label)
         row["part"] = "classical" if run.solver in PARTS["classical"]["solvers"] else ("high_accuracy" if run.order == 2 else "modern")
         row["reference"] = "none: incomplete" if run.status != "ok" else ("exact cell averages" if run.problem.key != "shu_osher" else (f"numerical N={ref.n}" if ref is not None else "reference run"))
         rows.append(row)
+        metadata.append(run_metadata(i, f"run_{i:03d}", run, ref))
         for key, value in {"x": run.x, "edges": run.edges, "U0": run.U0, "U": run.U, "history": run.history, "balance": run.balance, "boundary_exchange": run.boundary_exchange}.items():
             arrays[f"run_{i:03d}_{key}"] = value
-    if not rows:
-        return rows
+    if reference is not None:
+        for name in ("x", "edges", "U"):
+            arrays["reference_" + name] = getattr(reference, name)
+    directory.mkdir(parents=True, exist_ok=True)
     with (directory / "metrics.csv").open("w", encoding="utf-8-sig", newline="") as stream:
         writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
         writer.writeheader()
         writer.writerows(rows)
     np.savez_compressed(directory / "states.npz", **arrays)
-    (directory / "settings.json").write_text(json.dumps({"settings": cfg, "parts": PARTS, "python": sys.version, "numpy": np.__version__}, ensure_ascii=False, indent=2), encoding="utf-8")
+    (directory / "settings.json").write_text(json.dumps({"settings": cfg, "parts": PARTS, "python": sys.version, "numpy": np.__version__}, ensure_ascii=False, indent=2, default=json_value), encoding="utf-8")
+    (directory / "runs.json").write_text(json.dumps(metadata, ensure_ascii=False, indent=2, default=json_value), encoding="utf-8")
     print(f"Saved {len(rows)} distinct runs to {directory.resolve()}")
     return rows
 

@@ -77,6 +77,10 @@ five_part_outputs/temporal/     # 第V部
 
 同じ冊を再実行すると、その保存先の結果が更新されます。時間参照解と通常の計算結果は設定・指標とともに保存します。
 
+Eulerの結果保存は、渡した`CFG`で要求した計算だけを対象にします。同じカーネルに残る別設定のキャッシュは混ぜません。設定を変更したら、設定セルから順に再実行してください。第IV・V部では設定セルで表と参照解も初期化します。
+
+`metrics.csv`には各実行の`gamma`と`run_id`を記録し、`runs.json`には物理問題・数値設定・参照解の設定と、`states.npz`の配列接頭辞を保存します。Shu–Osherの参照解を渡した場合は、その保存変数・格子も`reference_*`配列として保存します。派生設定の時間収束試験を親の実験に含める場合は、`temporal_convergence(limited_cfg, experiment_cfg=CFG)`と明示します。
+
 ## 出力付きNotebookの更新
 
 GitHubの **Actions → Render and save notebook outputs → Run workflow** から、5冊をそれぞれ独立したカーネルで標準設定により実行し、図・表・アニメーションの出力を保存できます。全5冊のセル実行と画像生成が成功した場合にのみ、`main`のNotebookをまとめて更新します。再実行にはGitHub Actionsの書き込み権限が必要です。
@@ -94,9 +98,12 @@ GitHubの **Actions → Render and save notebook outputs → Run workflow** か�
 
 ```sh
 python scripts/check_numerics.py
+python scripts/check_regressions.py
 ```
 
 スカラー11・Euler9・半離散法8グループの検証を行います。Notebookの実行条件と検証範囲は[validation/README.md](validation/README.md)に記載しています。
+
+`check_regressions.py`は設定別の保存、NaN・無限大の入力拒否、平行移動・拡大縮小した周期領域の厳密解、および単独Notebookと`src/`の整合性を検証します。出力は一時フォルダだけに作成し、既存Notebookや計算データを書き換えません。
 
 著作権者による明示的なライセンス指定はまだありません。
 

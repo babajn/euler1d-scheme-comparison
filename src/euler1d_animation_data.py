@@ -62,6 +62,7 @@ def frame_cache_parameters(key, cfg):
     names = ("gamma", "cfl", "wave_speeds", "roe_entropy", "n_frames", "n_reference", "reference_limiter", "verify_observer")
     result = {name: cfg[name] for name in names}
     result.update({"format_version": 1, "problem": vars(p), "n": cfg["n_shu_osher"] if key == "shu_osher" else cfg["n_basic"]})
+    result["solver_revision"] = "periodic-domain-and-diagnostics-v2"
     # Change cache_revision after editing the physical solver in the notebook.
     result["cache_revision"] = cfg.get("cache_revision", "original-solver-with-observer-v1")
     return json.loads(json.dumps(result))

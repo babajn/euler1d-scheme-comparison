@@ -10,6 +10,7 @@ from matplotlib.animation import FuncAnimation
 import euler1d_core as core
 import euler1d_mol as mol
 from euler1d_study import show_table, field_values, FrameRecorder
+from euler1d_results import ExperimentCache, run_metadata, json_value
 
 SPATIAL_METHODS = {
     "constant": ("constant", "minmod"),
@@ -23,10 +24,10 @@ COLORS = ("#0072B2", "#D55E00", "#009E73", "#CC79A7")
 STYLES = ("--", "-", "-.", ":")
 MARKERS = ("o", "s", "^", "D")
 MOVIE_PROBLEMS = tuple(key for key in core.PROBLEMS if key != "shu_osher")
-CACHE = {}
+CACHE = ExperimentCache()
 
 
-def get_run(key, solver, cfg, reconstruction="constant", limiter="minmod", time_integrator="ssprk2", n=None, cfl=None, t_end=None, fixed_steps=None, observer=None):
+def get_run(key, solver, cfg, reconstruction="constant", limiter="minmod", time_integrator="ssprk2", n=None, cfl=None, t_end=None, fixed_steps=None, observer=None, experiment_cfg=None):
     p = core.PROBLEMS[key]
     kw = dict(n=cfg["n_basic"] if n is None else n, gamma=cfg["gamma"], cfl=cfg["cfl"] if cfl is None else cfl, reconstruction=reconstruction, limiter=limiter, time_integrator=time_integrator, wave_speeds=cfg["wave_speeds"], roe_entropy=cfg["roe_entropy"], t_end=t_end, fixed_steps=fixed_steps)
     token = (p, solver, tuple(kw.items()))
@@ -34,6 +35,7 @@ def get_run(key, solver, cfg, reconstruction="constant", limiter="minmod", time_
         return mol.simulate(p, solver, observer=observer, **kw)
     if token not in CACHE:
         CACHE[token] = mol.simulate(p, solver, **kw)
+    CACHE.record(cfg if experiment_cfg is None else experiment_cfg, token)
     return CACHE[token]
 
 
@@ -137,14 +139,14 @@ def spatial_time_check(cfg):
     return rows
 
 
-def temporal_convergence(cfg):
+def temporal_convergence(cfg, experiment_cfg=None):
     """Refine time only against two same-grid SSP-RK3 references, one pair per flux."""
     rows, reference_rows = [], []
     counts = tuple(cfg["temporal_steps"])
     refs = tuple(cfg["reference_steps"])
     if any(not isinstance(k, int) or k < 1 for k in counts + refs) or any(b <= a for a, b in zip(counts, counts[1:])) or not counts[-1] < refs[0] < refs[1]:
         raise ValueError("Use increasing positive temporal_steps and two larger reference_steps.")
-    kw = dict(n=cfg["temporal_n"], t_end=cfg["temporal_t_end"], cfl=cfg["fixed_cfl_limit"], reconstruction=cfg["temporal_reconstruction"], limiter=cfg["temporal_limiter"])
+    kw = dict(n=cfg["temporal_n"], t_end=cfg["temporal_t_end"], cfl=cfg["fixed_cfl_limit"], reconstruction=cfg["temporal_reconstruction"], limiter=cfg["temporal_limiter"], experiment_cfg=experiment_cfg)
     for solver in cfg["fluxes"]:
         coarse, fine = [get_run("entropy", solver, cfg, time_integrator="ssprk3", fixed_steps=k, **kw) for k in refs]
         if coarse.status != "ok" or fine.status != "ok":
@@ -246,13 +248,21 @@ def comparison_movie(key, solver, cfg, vary):
 
 
 def export_results(directory, cfg, tables=None, reference=None):
+    runs = CACHE.runs_for(cfg)
+    if not runs:
+        raise ValueError("No runs recorded for these experiment settings. Run the experiment before exporting.")
     folder = Path(directory)
-    folder.mkdir(parents=True, exist_ok=True)
-    rows, arrays = [], {}
-    for i, r in enumerate(CACHE.values()):
-        rows.append(dict(run_id=i, **mol.metrics(r, reference if r.problem.key == "shu_osher" else None)))
+    rows, arrays, metadata = [], {}, []
+    for i, r in enumerate(runs):
+        ref = reference if r.problem.key == "shu_osher" else None
+        rows.append(dict(run_id=i, **mol.metrics(r, ref)))
+        metadata.append(run_metadata(i, f"run_{i:04d}", r, ref))
         for name in ("x", "edges", "U0", "U", "history", "dt_history", "boundary_exchange", "balance"):
             arrays[f"run_{i:04d}_{name}"] = getattr(r, name)
+    if reference is not None:
+        for name in ("x", "edges", "U"):
+            arrays["reference_" + name] = getattr(reference, name)
+    folder.mkdir(parents=True, exist_ok=True)
     def write_csv(name, data):
         if data:
             with (folder / name).open("w", newline="", encoding="utf-8-sig") as stream:
@@ -263,7 +273,8 @@ def export_results(directory, cfg, tables=None, reference=None):
     for name, data in (tables or {}).items():
         write_csv(name + ".csv", data)
     np.savez_compressed(folder / "states.npz", **arrays)
-    (folder / "settings.json").write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
+    (folder / "settings.json").write_text(json.dumps(cfg, ensure_ascii=False, indent=2, default=json_value), encoding="utf-8")
+    (folder / "runs.json").write_text(json.dumps(metadata, ensure_ascii=False, indent=2, default=json_value), encoding="utf-8")
     print(f"Saved {len(rows)} runs: {folder}")
     return rows
 
