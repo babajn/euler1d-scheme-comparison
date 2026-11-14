@@ -19,6 +19,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 import euler1d_core as core
 import euler1d_mol as mol
+import scalar1d as scalar
+from euler1d_results import run_settings
 
 CORE_IDS = {"f208f769", "4fcea455", "4ad541c0", "e5516255", "df3fc6fa",
             "91d6c64e", "6297cce0", "42a4838f", "597be8ec"}
@@ -59,6 +61,123 @@ class RegressionTests(unittest.TestCase):
                             simulate(problems["entropy"], "Roe", n=16, **{name: value})
             with self.assertRaises(ValueError):
                 simulate(replace(problems["entropy"], final_time=np.nan), "HLLC", n=16)
+
+    def test_step_limits_require_positive_integers(self):
+        euler = [(core.simulate, core.PROBLEMS), (mol.simulate, core.PROBLEMS)]
+        euler += [(env["simulate"], env["PROBLEMS"]) for env in self.embedded]
+        calls = [lambda kw, fn=fn, p=p: fn(p["entropy"], "HLLC", n=24, t_end=.1, **kw)
+                 for fn, p in euler]
+        calls.append(lambda kw: scalar.simulate(scalar.CASES["advection_sine"], "Upwind", n=24, t_end=.1, **kw))
+        for i, call in enumerate(calls):
+            for name in (("max_steps", "history_stride") if i < len(euler) else ("max_steps",)):
+                for value in (np.nan, np.inf, -np.inf, 1.5, 2.0, 0, -1, True, False, np.bool_(True), "2", None):
+                    with self.subTest(solver=i, parameter=name, value=value):
+                        with self.assertRaises(ValueError):
+                            call({name: value})
+            for value in (2, np.int64(2)):
+                run = call({"max_steps": value})
+                steps, t = (run.steps, run.t) if i < len(euler) else (run["steps"], run["t"])
+                self.assertEqual(steps, 2)
+                self.assertLess(t, .1)
+            if i < len(euler):
+                run = call({"history_stride": np.int64(2)})
+                self.assertEqual(run.status, "ok")
+        # The same limit applies when a fixed time grid is requested.
+        run = mol.simulate(core.PROBLEMS["entropy"], n=24, t_end=.1, fixed_steps=20, max_steps=2)
+        self.assertEqual((run.status, run.steps), ("max_steps", 2))
+
+    def test_reference_physical_problem_must_match(self):
+        namespaces = [vars(core)] + self.embedded
+        for env in namespaces:
+            p = env["PROBLEMS"]["shu_osher"]
+            run = env["simulate"](p, "HLLC", n=24, t_end=.03)
+            fine = env["simulate"](p, "HLLC", n=48, t_end=.03)
+            wrong_sod = env["simulate"](replace(env["PROBLEMS"]["sod"], bounds=p.bounds, x0=p.x0), "HLLC", n=48, t_end=.03)
+            wrong_problems = [wrong_sod]
+            for change in (dict(boundary="outflow"), dict(left=(3., 2., 10.)), dict(right=(1., 0., 1.)),
+                           dict(x0=-3.5), dict(velocity=2.), dict(bounds=(-4., 6.))):
+                wrong_problems.append(replace(fine, problem=replace(p, **change)))
+            for ref in wrong_problems:
+                with self.assertRaisesRegex(ValueError, "same physical problem"):
+                    env["metrics"](run, ref)
+                with self.assertRaisesRegex(ValueError, "same physical problem"):
+                    env["metrics"](replace(run, status="failed", t=0.), ref)
+
+    def test_reference_time_gas_completion_and_grid(self):
+        p = core.PROBLEMS["shu_osher"]
+        run = core.simulate(p, "HLLC", n=24, t_end=.03)
+        fine = core.simulate(replace(p, title="Another label", final_time=.5), "HLL", n=48, t_end=.03)
+        row = core.metrics(run, fine)
+        expected = np.mean(abs(core.cons_to_prim(run.U) - core.cons_to_prim(fine.U.reshape(24, 2, 3).mean(axis=1))), axis=0)
+        np.testing.assert_array_equal([row[k] for k in ("L1_rho", "L1_u", "L1_p")], expected)
+        for ref in (replace(fine, t=.04), replace(fine, gamma=5/3), replace(fine, status="failed"), replace(fine, t=np.nan),
+                    core.simulate(p, "HLLC", n=40, t_end=.03)):
+            with self.assertRaises(ValueError):
+                core.metrics(run, ref)
+
+    def test_invalid_reference_cannot_be_plotted_or_saved(self):
+        import matplotlib.pyplot as plt
+        p = core.PROBLEMS["shu_osher"]
+        # Include an incompatible grid to exercise the former silent skip in study.export_results.
+        for module in (self.ex, self.study):
+            run = module.get_run("shu_osher", "HLLC", self.cfg, t_end=.03)
+            for n in (48, 40):
+                bad = core.simulate(replace(core.PROBLEMS["sod"], bounds=p.bounds), "HLLC", n=n, t_end=.03)
+                with tempfile.TemporaryDirectory() as directory:
+                    output = Path(directory) / "results"
+                    with self.assertRaisesRegex(ValueError, "same physical problem"):
+                        module.export_results(output, self.cfg, reference=bad)
+                    self.assertFalse(output.exists())
+                figures = plt.get_fignums()
+                with self.assertRaisesRegex(ValueError, "same physical problem"):
+                    if module is self.study:
+                        module.plot_profiles([run], reference=bad)
+                    else:
+                        module.plot_group([run], "time", reference=bad)
+                self.assertEqual(plt.get_fignums(), figures)
+
+    def test_accuracy_metadata_distinguishes_lw_and_mol(self):
+        from euler1d_animation_data import run_summary
+        names = ("order", "reconstruction_order", "space_order_nominal", "time_order")
+        for env in [vars(core)] + self.embedded:
+            for solver in core.ALL_SOLVERS:
+                for order in ((1, 2) if solver in core.RIEMANN_SOLVERS else (1,)):
+                    run = env["simulate"](env["PROBLEMS"]["entropy"], solver, n=24, order=order, t_end=.03)
+                    nominal = 2 if solver == "LW" else order
+                    expected = [nominal, order, nominal, nominal]
+                    for metadata in (env["metrics"](run), run_settings(run), run_summary(run)):
+                        self.assertEqual([metadata[k] for k in names], expected)
+                    self.assertEqual(run.order, order)
+        for rec in mol.RECONSTRUCTIONS:
+            for ti in mol.TIME_INTEGRATORS:
+                run = mol.simulate(core.PROBLEMS["entropy"], n=24, reconstruction=rec, time_integrator=ti, t_end=.03)
+                space = 1 if rec == "constant" else 2
+                for metadata in (mol.metrics(run), run_settings(run), run_summary(run)):
+                    self.assertEqual([metadata[k] for k in names], [space, space, space, mol.TIME_ORDERS[ti]])
+
+    def test_lw_export_preserves_reconstruction_setting(self):
+        run = self.study.get_run("entropy", "LW", self.cfg, t_end=.03)
+        with tempfile.TemporaryDirectory() as directory:
+            rows = self.study.export_results(directory, self.cfg)
+            settings = json.loads((Path(directory) / "runs.json").read_text())[0]["settings"]
+            self.assertEqual(settings["order"], rows[0]["order"])
+            self.assertEqual(settings["order"], 2)
+            self.assertEqual(settings["reconstruction_order"], 1)
+            repeated = core.simulate(run.problem, settings["solver"], n=settings["n"], t_end=settings["target_time"], order=settings["reconstruction_order"])
+            np.testing.assert_array_equal(run.U, repeated.U)
+
+    def test_animation_cache_revision_and_embedded_metadata(self):
+        import euler1d_animation_data as animation
+        params = animation.frame_cache_parameters("sod", animation.ANIM_CFG)
+        old = dict(params, solver_revision="periodic-domain-and-diagnostics-v2")
+        self.assertNotEqual(animation._signature(params), animation._signature(old))
+        for name in ("euler1d_stage1_light", "euler1d_complete_light"):
+            cell = next(c for c in notebook(name)["cells"] if c.get("id") == "ce716b67")
+            actual = {n.name: ast.dump(n) for n in ast.parse("".join(cell["source"])).body if isinstance(n, ast.FunctionDef)}
+            source = ast.parse((ROOT / "src/euler1d_animation_data.py").read_text())
+            for node in source.body:
+                if isinstance(node, ast.FunctionDef) and node.name in ("run_summary", "frame_cache_parameters"):
+                    self.assertEqual(actual[node.name], ast.dump(node))
 
     def test_entropy_reference_matches_cell_integral(self):
         nodes, weights = np.polynomial.legendre.leggauss(12)

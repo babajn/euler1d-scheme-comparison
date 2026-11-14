@@ -62,7 +62,7 @@ def frame_cache_parameters(key, cfg):
     names = ("gamma", "cfl", "wave_speeds", "roe_entropy", "n_frames", "n_reference", "reference_limiter", "verify_observer")
     result = {name: cfg[name] for name in names}
     result.update({"format_version": 1, "problem": vars(p), "n": cfg["n_shu_osher"] if key == "shu_osher" else cfg["n_basic"]})
-    result["solver_revision"] = "periodic-domain-and-diagnostics-v2"
+    result["solver_revision"] = "reference-and-order-metadata-v3"
     # Change cache_revision after editing the physical solver in the notebook.
     result["cache_revision"] = cfg.get("cache_revision", "original-solver-with-observer-v1")
     return json.loads(json.dumps(result))
@@ -111,7 +111,9 @@ class FrameRecorder:
 
 
 def run_summary(run):
-    return {"solver": run.solver, "label": run.label, "order": run.order, "n": run.n, "status": run.status,
+    return {"solver": run.solver, "label": run.label, "order": run.space_order_nominal,
+            "reconstruction_order": run.reconstruction_order, "space_order_nominal": run.space_order_nominal,
+            "time_order": run.time_order, "n": run.n, "status": run.status,
             "t_reached": run.t, "t_target": run.target_time, "steps": run.steps, "seconds": run.elapsed,
             "fail_time": run.fail_time, "fail_dt": run.fail_dt, "fail_min_rho": run.fail_min_rho,
             "fail_min_p": run.fail_min_p, "fail_reason": run.fail_reason,

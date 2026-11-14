@@ -36,6 +36,10 @@ class MOLResult(core.RunResult):
     fixed_steps: Optional[int] = None
 
     @property
+    def time_order(self):
+        return TIME_ORDERS[self.time_integrator]
+
+    @property
     def label(self):
         return " | ".join((flux_label(self.solver, self.wave_speeds), reconstruction_label(self.reconstruction, self.limiter), TIME_LABELS[self.time_integrator]))
 
@@ -98,8 +102,8 @@ def simulate(problem, solver="HLLC", n=200, gamma=1.4, cfl=0.4, reconstruction="
         raise ValueError("Require finite gamma>1, 0<CFL<=0.9, and entropy coefficient>=0.")
     if fixed_steps is not None and (isinstance(fixed_steps, bool) or not isinstance(fixed_steps, (int, np.integer)) or fixed_steps < 1):
         raise ValueError("fixed_steps must be None or a positive integer.")
-    if not isinstance(history_stride, int) or history_stride < 1 or max_steps < 1:
-        raise ValueError("Require positive history_stride and max_steps.")
+    if any(isinstance(k, bool) or not isinstance(k, (int, np.integer)) or k < 1 for k in (history_stride, max_steps)):
+        raise ValueError("history_stride and max_steps must be positive integers.")
     target = problem.final_time if t_end is None else float(t_end)
     if not np.isfinite(target) or target < 0:
         raise ValueError("t_end must be finite and nonnegative.")
@@ -169,8 +173,7 @@ def simulate(problem, solver="HLLC", n=200, gamma=1.4, cfl=0.4, reconstruction="
 
 def metrics(run, reference=None):
     row = core.metrics(run, reference)
-    row.pop("order")
-    row.update(method=run.label, reconstruction=run.reconstruction, space_order_nominal=run.order, time_integrator=run.time_integrator, time_order=TIME_ORDERS[run.time_integrator], n_rhs=run.n_rhs, max_cfl=run.max_cfl, fixed_steps=run.fixed_steps)
+    row.update(method=run.label, reconstruction=run.reconstruction, time_integrator=run.time_integrator, n_rhs=run.n_rhs, max_cfl=run.max_cfl, fixed_steps=run.fixed_steps)
     row["dt_min"] = float(run.dt_history.min()) if run.steps else np.nan
     row["dt_max"] = float(run.dt_history.max()) if run.steps else np.nan
     return row

@@ -74,6 +74,8 @@ def plot_group(runs, vary, fields=("rho",), reference=None):
     p, target = runs[0].problem, runs[0].target_time
     if any(r.problem != p or r.target_time != target or r.gamma != runs[0].gamma for r in runs):
         raise ValueError("Compare the same problem, gamma, and target time.")
+    if reference is not None and p.key == "shu_osher":
+        core.validate_reference(reference, p, runs[0].gamma, target)
     for field in fields:
         fig = plt.figure(figsize=(10.8, 4.9))
         ax = fig.add_axes((0.09, 0.16, 0.64, 0.69))
@@ -82,8 +84,6 @@ def plot_group(runs, vary, fields=("rho",), reference=None):
             exact, ylabel = field_values(core.exact_pointwise(p, xp, target, runs[0].gamma), field, runs[0].gamma)
             ax.plot(xp, exact, color="black", lw=1.6, label="Exact (pointwise)")
         elif reference is not None:
-            if reference.status != "ok" or reference.t != target:
-                raise ValueError("Incomplete reference or different reference time.")
             exact, ylabel = field_values(core.cons_to_prim(reference.U, reference.gamma), field, reference.gamma)
             ax.plot(reference.x, exact, color="black", lw=1.3, label=f"Numerical ref. N={reference.n}")
         for j, r in enumerate(runs):

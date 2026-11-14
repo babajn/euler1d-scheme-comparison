@@ -1,6 +1,6 @@
 """Euler experiments, diagnostics, and animations for Parts II-IV."""
 import numpy as np
-from euler1d_core import ALL_SOLVERS, RIEMANN_SOLVERS, PROBLEMS, simulate, metrics, exact_pointwise, exact_cell_average, cons_to_prim, project_reference
+from euler1d_core import ALL_SOLVERS, RIEMANN_SOLVERS, PROBLEMS, simulate, metrics, exact_pointwise, exact_cell_average, cons_to_prim, project_reference, validate_reference
 from euler1d_results import ExperimentCache, run_metadata, json_value
 
 import csv
@@ -65,6 +65,8 @@ def plot_profiles(results, fields=("rho",), reference=None, xlim=None, logarithm
     base = complete[0]
     if any(abs(r.t - base.t) > 1.0e-12 or r.problem != base.problem or r.gamma != base.gamma for r in complete):
         raise ValueError("All plotted solutions must have the same problem, time, and gamma.")
+    if reference is not None and base.problem.key == "shu_osher":
+        validate_reference(reference, base.problem, base.gamma, base.t)
     for field in fields:
         fig = plt.figure(figsize=(9.8, 4.5))
         ax = fig.gca()
@@ -74,8 +76,6 @@ def plot_profiles(results, fields=("rho",), reference=None, xlim=None, logarithm
             yp, ylabel = field_values(Wp, field, base.gamma)
             ax.plot(xp, yp, color="#000000", lw=1.3, label="Exact (pointwise)", zorder=5)
         elif reference is not None:
-            if reference.status != "ok" or abs(reference.t - base.t) > 1.0e-12:
-                raise ValueError("The reference must be complete at the plotted time.")
             yp, ylabel = field_values(cons_to_prim(reference.U, reference.gamma), field, reference.gamma)
             ax.plot(reference.x, yp, color="#000000", lw=1.2, label=f"Numerical ref. N={reference.n}", zorder=5)
         for index, run in enumerate(complete):
@@ -206,7 +206,9 @@ def export_results(directory, cfg, reference=None):
     directory = Path(directory)
     rows, arrays, metadata = [], {}, []
     for i, run in enumerate(runs):
-        ref = reference if run.problem.key == "shu_osher" and reference is not None and reference.n > run.n and reference.n % run.n == 0 else None
+        if reference is not None and run.problem.key == "shu_osher":
+            validate_reference(reference, run.problem, run.gamma, run.target_time)
+        ref = reference if run.problem.key == "shu_osher" and run is not reference else None
         row = dict(metrics(run, ref), run_id=i, method=run.label)
         row["part"] = "classical" if run.solver in PARTS["classical"]["solvers"] else ("high_accuracy" if run.order == 2 else "modern")
         row["reference"] = "none: incomplete" if run.status != "ok" else ("exact cell averages" if run.problem.key != "shu_osher" else (f"numerical N={ref.n}" if ref is not None else "reference run"))

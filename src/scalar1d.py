@@ -163,6 +163,8 @@ def exact_cell_average(problem, edges, t):
 
 def simulate(problem, scheme, n=200, cfl=0.4, t_end=None, record=False, max_steps=200000):
     """Explicit conservative update. No clipping, retry, or solver fallback."""
+    if isinstance(max_steps, bool) or not isinstance(max_steps, (int, np.integer)) or max_steps < 1:
+        raise ValueError("max_steps must be a positive integer.")
     if not isinstance(n, (int, np.integer)) or n < 4 or not 0.0 < cfl <= 1.0:
         raise ValueError("Require integer n>=4 and 0<CFL<=1.")
     if problem.equation not in SCHEMES or scheme not in SCHEMES[problem.equation]:

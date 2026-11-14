@@ -81,6 +81,10 @@ Eulerの結果保存は、渡した`CFG`で要求した計算だけを対象に�
 
 `metrics.csv`には各実行の`gamma`と`run_id`を記録し、`runs.json`には物理問題・数値設定・参照解の設定と、`states.npz`の配列接頭辞を保存します。Shu–Osherの参照解を渡した場合は、その保存変数・格子も`reference_*`配列として保存します。派生設定の時間収束試験を親の実験に含める場合は、`temporal_convergence(limited_cfg, experiment_cfg=CFG)`と明示します。
 
+Shu–Osherの数値参照解は、問題の種類・領域・初期条件・境界条件・比熱比・比較時刻が一致し、計算が完了している必要があります。誤差評価では整数比の格子も必要です。別問題の参照解を渡すと、誤差評価・保存・グラフ表示の前にエラーになります。
+
+EulerのCSV・`runs.json`・動画データの要約では、`reconstruction_order`（実行時の再構築設定）、`space_order_nominal`（滑らかな解に対する公称空間精度）、`time_order`（公称時間精度）を分けて記録します。出力の`order`は`space_order_nominal`の別名です。LWは`reconstruction_order=1`、公称空間・時間精度はともに2です。`simulate(..., order=...)`と`RunResult.order`は従来どおり再構築設定を表すため、LWを再実行するときは`order=1`を指定します。半離散法では空間・時間精度は独立であり、リミッターや不連続点では実際の収束次数が低下し得ます。旧動画キャッシュは版識別子の違いにより再計算されます。
+
 ## 出力付きNotebookの更新
 
 GitHubの **Actions → Render and save notebook outputs → Run workflow** から、5冊をそれぞれ独立したカーネルで標準設定により実行し、図・表・アニメーションの出力を保存できます。全5冊のセル実行と画像生成が成功した場合にのみ、`main`のNotebookをまとめて更新します。再実行にはGitHub Actionsの書き込み権限が必要です。
@@ -103,7 +107,7 @@ python scripts/check_regressions.py
 
 スカラー11・Euler9・半離散法8グループの検証を行います。Notebookの実行条件と検証範囲は[validation/README.md](validation/README.md)に記載しています。
 
-`check_regressions.py`は設定別の保存、NaN・無限大の入力拒否、平行移動・拡大縮小した周期領域の厳密解、および単独Notebookと`src/`の整合性を検証します。出力は一時フォルダだけに作成し、既存Notebookや計算データを書き換えません。
+`check_regressions.py`は設定別の保存、参照解の物理条件、NaN・無限大・非整数のステップ上限の拒否、精度情報の整合性、平行移動・拡大縮小した周期領域の厳密解、および単独Notebookと`src/`の整合性を検証します。`max_steps`とEulerの`history_stride`は正の整数のみを受理します（真偽値も拒否）。出力は一時フォルダだけに作成し、既存Notebookや計算データを書き換えません。
 
 著作権者による明示的なライセンス指定はまだありません。
 

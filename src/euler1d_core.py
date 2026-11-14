@@ -442,6 +442,20 @@ class RunResult:
     fail_reason: str = ""
 
     @property
+    def reconstruction_order(self):
+        """The reconstruction option passed to simulate; LW uses constant states."""
+        return self.order
+
+    @property
+    def space_order_nominal(self):
+        """Smooth-solution spatial order, including the coupled Richtmyer update."""
+        return 2 if self.solver == "LW" else self.order
+
+    @property
+    def time_order(self):
+        return 2 if self.solver == "LW" else self.order
+
+    @property
     def label(self):
         name = "LLF (Rusanov)" if self.solver == "LLF" else ("HLL (HLLE)" if self.solver == "HLL" and self.wave_speeds == "einfeldt" else self.solver)
         if self.solver == "LW":
@@ -520,6 +534,20 @@ def simulate(problem: Problem, solver: str, n: int = 200, gamma: float = 1.4,
         history.append([t, float(W[:, 0].min()), float(W[:, 2].min()), float(np.max(np.abs(balance)))])
     return RunResult(problem, solver, n, order, gamma, cfl, limiter, wave_speeds, roe_entropy, edges, x, U0, U, t, target, steps, elapsed, status, initial_total, exchanged, balance, np.asarray(history), **failure)
 
+def validate_reference(reference: RunResult, problem: Problem, gamma: float, t: float):
+    """Require the same physical problem, gas and time, independent of solver/grid.
+
+    title and final_time are display/default-run settings; the actual comparison
+    time is checked separately. All initial/boundary-condition fields must match.
+    """
+    fields = ("key", "bounds", "boundary", "left", "right", "x0", "velocity")
+    if any(not np.array_equal(getattr(reference.problem, name), getattr(problem, name)) for name in fields):
+        raise ValueError("Reference and numerical solutions must describe the same physical problem (initial and boundary conditions).")
+    if (reference.status != "ok" or not np.isfinite([reference.t, t, reference.gamma, gamma]).all()
+            or abs(reference.t - t) > 1.0e-12 or reference.gamma != gamma):
+        raise ValueError("The reference must be complete at the same time and gamma as the numerical solution.")
+
+
 def project_reference(reference: RunResult, edges: np.ndarray) -> np.ndarray:
     """同じ一様格子領域で整数比の細格子の保存変数を粗格子へ体積平均する。"""
     n = len(edges) - 1
@@ -529,8 +557,13 @@ def project_reference(reference: RunResult, edges: np.ndarray) -> np.ndarray:
 
 
 def metrics(result: RunResult, reference: Optional[RunResult] = None) -> dict:
+    if reference is not None and result.problem.key == "shu_osher":
+        validate_reference(reference, result.problem, result.gamma,
+                           result.t if result.status == "ok" else result.target_time)
     W = cons_to_prim(result.U, result.gamma)
-    row = {"problem": result.problem.key, "solver": result.solver, "order": 2 if result.solver == "LW" else result.order,
+    row = {"problem": result.problem.key, "solver": result.solver, "order": result.space_order_nominal,
+           "reconstruction_order": result.reconstruction_order, "space_order_nominal": result.space_order_nominal,
+           "time_order": result.time_order,
            "n": result.n, "gamma": result.gamma, "cfl": result.cfl, "limiter": result.limiter if result.order == 2 else "constant",
            "wave_speeds": result.wave_speeds, "roe_entropy": result.roe_entropy,
            "status": result.status, "t_reached": result.t, "t_target": result.target_time, "steps": result.steps,
@@ -547,8 +580,6 @@ def metrics(result: RunResult, reference: Optional[RunResult] = None) -> dict:
     if result.problem.key != "shu_osher":
         Uexact = exact_cell_average(result.problem, result.edges, result.t, result.gamma)
     elif reference is not None:
-        if abs(reference.t - result.t) > 1.0e-12 or reference.gamma != result.gamma:
-            raise ValueError("Reference and numerical solutions must have the same time and gamma.")
         Uexact = project_reference(reference, result.edges)
     if Uexact is not None:
         Wexact = cons_to_prim(Uexact, result.gamma)

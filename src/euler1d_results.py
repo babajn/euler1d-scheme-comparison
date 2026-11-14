@@ -35,7 +35,9 @@ class ExperimentCache(dict):
 def run_settings(run):
     """Physical and numerical settings for one saved array group."""
     settings = {name: getattr(run, name) for name in
-                ("solver", "n", "order", "gamma", "cfl", "limiter", "wave_speeds", "roe_entropy", "target_time")}
+                ("solver", "n", "reconstruction_order", "space_order_nominal", "time_order",
+                 "gamma", "cfl", "limiter", "wave_speeds", "roe_entropy", "target_time")}
+    settings["order"] = run.space_order_nominal  # Legacy output alias, never a simulate argument.
     settings["problem"] = asdict(run.problem)
     for name in ("reconstruction", "time_integrator", "fixed_steps"):
         if hasattr(run, name):
